@@ -1,0 +1,55 @@
+import RPi.GPIO as GPIO
+import keyboard  # Library for detecting key presses
+import time
+
+# Pin configuration
+IN1 = 17
+IN2 = 27
+ENA = 18  # PWM for speed control
+
+# GPIO setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(IN1, GPIO.OUT)
+GPIO.setup(IN2, GPIO.OUT)
+GPIO.setup(ENA, GPIO.OUT)
+
+# PWM setup
+pwm = GPIO.PWM(ENA, 1000)  # 1kHz frequency
+pwm.start(0)  # Start with 0% duty cycle
+
+# Function to control motor
+def motor_forward(speed=50):
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    pwm.ChangeDutyCycle(speed)
+
+def motor_backward(speed=50):
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    pwm.ChangeDutyCycle(speed)
+
+def stop_motor():
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.LOW)
+    pwm.ChangeDutyCycle(0)
+
+try:
+    print("Hold UP to move forward, DOWN to move backward, and 'q' to quit.")
+
+    while True:
+        if keyboard.is_pressed("up"):
+            motor_forward(70)  # Moves forward while key is held
+        elif keyboard.is_pressed("down"):
+            motor_backward(70)  # Moves backward while key is held
+        else:
+            stop_motor()  # Stops if no key is pressed
+
+        if keyboard.is_pressed("q"):  # Quit on 'q'
+            break
+
+        time.sleep(0.05)  # Small delay to reduce CPU usage
+
+finally:
+    print("Exiting...")
+    stop_motor()
+    GPIO.cleanup()
