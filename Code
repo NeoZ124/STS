@@ -1,0 +1,65 @@
+import RPi.GPIO as GPIO
+import time
+import curses  # Library for capturing keyboard input
+
+# Pin configuration
+IN1 = 17
+IN2 = 27
+ENA = 18  # PWM for speed control
+
+# GPIO setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(IN1, GPIO.OUT)
+GPIO.setup(IN2, GPIO.OUT)
+GPIO.setup(ENA, GPIO.OUT)
+
+# PWM setup
+pwm = GPIO.PWM(ENA, 1000)  # 1kHz frequency
+pwm.start(0)  # Start with 0% duty cycle
+
+# Function to control motor
+def motor_forward(speed=50):
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    pwm.ChangeDutyCycle(speed)
+
+def motor_backward(speed=50):
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    pwm.ChangeDutyCycle(speed)
+
+def stop_motor():
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.LOW)
+    pwm.ChangeDutyCycle(0)
+
+# Initialize the curses library for keyboard input
+screen = curses.initscr()
+curses.noecho()
+curses.cbreak()
+screen.keypad(True)
+
+try:
+    screen.addstr("Use Up and Down arrow keys to control the motor. Press 'q' to quit.\n")
+
+    while True:
+        key = screen.getch()
+
+        if key == curses.KEY_UP:
+            screen.addstr("Moving Forward\n")
+            motor_forward(70)  # Adjust speed as needed
+        elif key == curses.KEY_DOWN:
+            screen.addstr("Moving Backward\n")
+            motor_backward(70)  # Adjust speed as needed
+        elif key == ord('q'):  # Press 'q' to exit
+            break
+        else:
+            stop_motor()
+
+finally:
+    # Cleanup on exit
+    curses.nocbreak()
+    screen.keypad(False)
+    curses.echo()
+    curses.endwin()
+    GPIO.cleanup()
