@@ -1,0 +1,87 @@
+import torch
+import torchvision
+from torchvision import transforms
+import cv2
+import numpy as np
+from PIL import Image
+
+# Load the Pretrained Model (Optimized for Raspberry Pi)
+def load_model():
+    print("Loading model...")
+    model = torchvision.models.detection.ssdlite320_mobilenet_v3_large(pretrained=True)
+    model.eval()  # Set the model to evaluation mode
+    return model
+
+# COCO Labels
+LABELS = [
+    "__background__", "person", "bicycle", "car", "motorcycle", "airplane", "bus",
+    "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign",
+    "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+    "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag",
+    "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite",
+    "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
+    "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana",
+    "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza",
+    "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table",
+    "toilet", "TV", "laptop", "mouse", "remote", "keyboard", "cell phone",
+    "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock",
+    "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+]
+
+# Object Detection Function
+def detect_objects(frame, model):
+    # Convert OpenCV image to PIL format
+    img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    
+    # Transform the image for the model
+    transform = transforms.Compose([transforms.ToTensor()])
+    img_tensor = transform(img).unsqueeze(0)
+
+    # Run object detection
+    with torch.no_grad():
+        predictions = model(img_tensor)
+
+    # Get detected objects with confidence > 0.5
+    for i in range(len(predictions[0]["boxes"])):
+        score = predictions[0]["scores"][i].item()
+        if score > 0.5:
+            box = predictions[0]["boxes"][i].numpy().astype(int)
+            label = LABELS[predictions[0]["labels"][i].item()]
+            confidence = f"{score:.2f}"
+
+            # Draw bounding box and label
+            cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+            cv2.putText(frame, f"{label}: {confidence}", (box[0], box[1] - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    return frame
+
+# Capture Video and Run Detection
+def main():
+    # Load the object detection model
+    model = load_model()
+
+    # Open webcam
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Run object detection
+        frame = detect_objects(frame, model)
+
+        # Display the output
+        cv2.imshow("Object Detection", frame)
+
+        # Press 'q' to exit
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    # Release resources
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
