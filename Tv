@@ -1,0 +1,38 @@
+import torch
+import torchvision
+from torchvision.transforms import functional as F
+import cv2
+
+# Load a pre-trained Faster R-CNN model
+model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+model.eval()
+
+cap = cv2.VideoCapture(0)
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    # Convert frame to RGB and Tensor
+    img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    img_tensor = F.to_tensor(img).unsqueeze(0)
+
+    # Perform object detection
+    with torch.no_grad():
+        predictions = model(img_tensor)
+
+    # Draw bounding boxes and labels
+    for box, score, label in zip(predictions[0]['boxes'], predictions[0]['scores'], predictions[0]['labels']):
+        if score > 0.5:  # Confidence threshold
+            x1, y1, x2, y2 = map(int, box)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # Display the frame
+    cv2.imshow("Object Detection", frame)
+    
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
